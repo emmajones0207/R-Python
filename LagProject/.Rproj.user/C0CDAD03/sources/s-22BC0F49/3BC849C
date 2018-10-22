@@ -1,0 +1,24 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1540240739787.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1929433479",
+    "id" : "3BC849C",
+    "lastKnownWriteTime" : 1540241437,
+    "last_content_update" : 1540241437383,
+    "path" : "~/6640 - R Python/Homework/LagProject/MalariaSetup.Rmd",
+    "project_path" : "MalariaSetup.Rmd",
+    "properties" : {
+        "cursorPosition" : "19,0",
+        "last_setup_crc32" : "22BC0F49a86579c",
+        "scrollLine" : "20",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}
