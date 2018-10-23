@@ -1,0 +1,70 @@
+---
+title: "Malaria Project: Analyzing Malaria Under 5 Cases Per Thousand Against Lagged Weather Data"
+author: "Emma Jones"
+date: "October 22, 2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(dplyr)
+knitr::opts_chunk$set(echo = TRUE)
+
+mal <- read.csv("./MozSyntheticMalaria.csv")
+mal <- mal[,c(1:4, 12:26)]
+
+# creating cases per thousand variable
+mal$denom <- mal$Population_UN*mal$u5weight
+mal$cpt <- (mal$malaria/mal$denom)*1000
+
+head(mal)
+
+```
+
+
+```{r lag}
+# creating a lagged rain total variable k number of weeks behind the rest of the data
+mal$lag2rainT <- lag(mal$rainTot, 2)
+
+mal$lag4rainT <- lag(mal$rainTot, 4)
+
+mal$lag8rainT <- lag(mal$rainTot, 8)
+
+# creating a lagged temp avg variable
+mal$lag2tavg <- lag(mal$tavg, 2)
+
+mal$lag4tavg <- lag(mal$tavg, 4)
+
+mal$lag8tavg <- lag(mal$tavg, 8)
+```
+
+##Questions of Interest
+1. Which lags are most associated with malaria incidence for temperature and total rain-fall?
+
+```{r rainTcpt}
+library(colorspace)
+library(ggplot2)
+
+# The palette with black:
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+cptRain <- ggplot(data=mal) + geom_smooth(mapping = aes(x = Epiweek, y= cpt), color = "#660066") +
+  geom_smooth(mapping = aes(x = Epiweek, y = rainTot), color="#660066") +
+  geom_smooth(mapping = aes(x = Epiweek, y=lag2rainT), color="#CC0000") + 
+  geom_smooth(mapping = aes(x = Epiweek, y=lag4rainT), color="#FF6600") +
+  geom_smooth(mapping = aes(x = Epiweek, y=lag8rainT), color="#FF9933") 
+cptRain
+
+```
+
+```{r tavgCpt}
+
+cptTavg <- ggplot(data=mal) + geom_smooth(mapping = aes(x = Epiweek, y= cpt), color = "#660066") +
+  geom_smooth(mapping = aes(x = Epiweek, y = tavg), color="#660066") +
+  geom_smooth(mapping = aes(x = Epiweek, y=lag2tavg), color="#CC0000") + 
+  geom_smooth(mapping = aes(x = Epiweek, y=lag4tavg), color="#FF6600") +
+  geom_smooth(mapping = aes(x = Epiweek, y=lag8tavg), color="#FF9933") 
+cptTavg
+
+```
+
