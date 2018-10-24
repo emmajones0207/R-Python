@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1540242883119.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "D6317DE3",
+    "lastKnownWriteTime" : 1536859114,
+    "last_content_update" : 1536859114,
+    "path" : "~/6640 - R Python/Lectures/Code/Graphics1.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "44,64",
+        "scrollLine" : "29"
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

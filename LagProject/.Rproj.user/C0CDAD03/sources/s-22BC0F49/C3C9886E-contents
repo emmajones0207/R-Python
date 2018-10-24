@@ -1,0 +1,240 @@
+#########################################
+### GRAPHICS USING BASE R
+### KATIE COLBORN
+### SEPTEMBER 12, 2018
+#########################################
+
+op <- par()
+options(width=80)
+emptyenv()
+rm(list=ls())
+
+library(lattice)
+
+### ALL DATA ###
+all2 <- read.csv('C:/Users/Emma/Documents/6640 - R Python/Lectures/weatherData.csv')
+
+### BASIC PLOTTTING ###
+par(mfrow=c(2,2))
+
+hist(all2$rainTot)
+hist(all2$tavg)
+hist(all2$rh)
+hist(all2$sd)
+
+hist(all2$rainTot, breaks=20, xlab="Weekly total rainfall", main="", 
+     col="grey")
+hist(all2$tavg, breaks=20, xlab="Weekly ave temperature (Celcius)", 
+     main="", col="grey")
+hist(all2$rh, breaks=20, xlab="Weekly ave humidity", main="", 
+     col="grey")
+hist(all2$sd, breaks=20, xlab="Weekly ave sat \n vap pres def", main="", #\n puts what follows on next line
+     col="grey")
+  
+### Normalized weather plot epiweek ###
+par(mfrow=c(1,1))
+plot(smooth.spline(all2$Epiweek, all2$normRain), type="l", col="blue", 
+     ylim=c(-3,3), xlab="Epidemiology week", 
+      ylab="Standard deviations", main = "Normalized weather")
+#points(all2$Epiweek, all2$normRain)         #gross
+lines(smooth.spline(all2$Epiweek, all2$normTavg), type="l", col="red")
+lines(smooth.spline(all2$Epiweek, all2$normrh), type="l", col="purple")
+legend(0, -1.5, c("Rain", "Ave temp", "Rel Hum"), text.col = c("blue", 
+                                                               "red", 
+                                                               "purple"), cex = 0.7, bty = "n")
+                                                                # cex: font size; bty: border around legend - "n" means no border
+
+### Normalized weather plot study week ###
+plot(smooth.spline(all2$longDate, all2$normRain), type="l", 
+     ylim=c(-1.5,2), xlab="Epidemiology week", 
+     ylab="Standardized value", col="blue")
+lines(smooth.spline(all2$longDate, all2$normTavg), type="l", col="red")
+lines(smooth.spline(all2$longDate, all2$normrh), type="l", col="purple")
+legend(2010, 2, c("Rain", "Ave temp", "Rel Hum"), text.col = c("blue", "red", "purple"), cex = 0.7, bty = "n")
+
+
+### SPLOM PLOT ###
+all3 <- subset(all2, Epiyear==2016)
+splom(~all3[c("rainTot", "tavg", "rh", "sd")], 
+      data=all2, varname.cex=.7, cex.axis=.5)
+
+### Weather data boxplots by year on one page ###
+#jpeg('/Users/katiecolborn/Box Sync/MozambiqueMalaria/GatesGCE/Presentations/CUBoulder2017/climateBoxplots.jpeg',
+#     height=7, width=11, units="in", res=200)
+par(mfrow=c(3,2))
+boxplot(all2$rainTot ~ all2$Epiyear, ylim=c(0,20), xlab="Year", 
+        ylab="Total weekly rainfall (mm)", col="blue")
+boxplot(all2$tavg ~ all2$Epiyear, ylim=c(10,40), xlab="Year", 
+        ylab="Ave weekly temperature (C)", col="red")
+boxplot(all2$sd ~ all2$Epiyear, ylim=c(0,30), xlab="Year", 
+        ylab="Saturation vapor pressure deficit", col="yellow")
+boxplot(all2$psfc ~ all2$Epiyear, xlab="Year", 
+        ylab="Surface barometric pressure (hPa)", col="green")
+boxplot(all2$rh ~ all2$Epiyear, xlab="Year", 
+        ylab="Relative humidity (%)", col="orange")
+#invisible(dev.off())
+
+### lattice graph: xyplot ###
+
+#install.packages("RColorBrewer")
+library(RColorBrewer)
+
+par(mfrow=c(1,1))
+xyplot(tavg ~ Epiweek, groups=Region, type="l", 
+       xlab='Week in 2016', ylab='Ave temperature', data = all3, 
+       col=brewer.pal(4,"Set1"),
+       auto.key = list(corner = c(0, .98), cex=.8, pch=19), 
+       par.settings = list(superpose.symbol = list(pch = 19,
+                                                   col = brewer.pal(4,"Set1"))))
+
+### Splines by week and region ###
+all4 <- na.omit(all3) # splines can't be fit with missing values in data
+
+plot(smooth.spline(all4$Epiweek[all4$Region=="Center"], 
+                   all4$tavg[all4$Region=="Center"], df=4), type="l",
+     col="red", xlab="Epidemiology week in 2016", ylab="Ave temperature (Celcius)", 
+     main="Average temperature by week \n and Region", ylim=c(19, 30), lty=5, lwd=2)
+lines(smooth.spline(all4$Epiweek[all4$Region=="Coastal"], 
+                    all4$tavg[all4$Region=="Coastal"], df=4), type="l",
+     col="blue", lty=4, lwd=2)
+lines(smooth.spline(all4$Epiweek[all4$Region=="Northern"], 
+                    all4$tavg[all4$Region=="Northern"], df=4), type="l",
+     col="green", lty=3, lwd=2)
+lines(smooth.spline(all4$Epiweek[all4$Region=="Southern"], 
+                    all4$tavg[all4$Region=="Southern"], df=4), type="l",
+     col="purple", lty=2, lwd=2)
+legend(20, 29, c("Center", "Coastal", "Northern", "Southern"), 
+       text.col = c("blue", "red", "green", "purple"), 
+       lty=c(5,4,3,2), cex = 1, bty = "n", 
+       title.col="black", title="Region", lwd=2)
+
+### IRIS DATA ###
+head(iris)
+pairs(iris)
+
+pairs(iris, col = iris$Species)
+pairs(iris[1:4], main = "Anderson's Iris Data -- 3 species", 
+      pch = 21, bg = c("red", "green3", "blue")[unclass(iris$Species)], 
+      lower.panel=NULL, labels=c("SL","SW","PL","PW"), font.labels=2, 
+      cex.labels=4.5)
+
+plot(iris$Sepal.Length, iris$Petal.Length, col = iris$Species)
+plot(iris$Sepal.Length, iris$Petal.Length, col = iris$Species, pch = 21,
+     bg = "blue")
+
+iris$Colour <- ""
+iris$Colour[iris$Species=="setosa"] <- "magenta"
+iris$Colour[iris$Species=="versicolor"] <- "cyan"
+iris$Colour[iris$Species=="virginica"] <- "yellow"
+
+plot(iris$Sepal.Length, iris$Petal.Length, col = iris$Colour, pch = 16, cex = 2)
+legend(x = 4.5, y = 7, 
+       legend = c("setosa","versicolor","virginica"),
+       col = c("magenta","cyan","yellow"),
+       pch=16)
+
+
+
+#############################
+# library
+install.packages("likert")
+library(likert) # requires ggplot
+
+# Use a provided dataset
+data(pisaitems) 
+items28 <- pisaitems[, substr(names(pisaitems), 1, 5) == "ST24Q"] # find anything with first five elements of string contain these and keep these
+
+# Realize the plot
+l28 <- likert(items28) 
+summary(l28) 
+plot(l28)
+
+############################
+
+
+par(mfrow=c(3, 2))
+
+# Scatterplot
+x <- c(0.5, 2, 4, 8, 12, 16)
+y1 <- c(1, 1.3, 1.9, 3.4, 3.9, 4.8)
+y2 <- c(4, .8, .5, .45, .4, .3)
+par(las=1, mar=c(4, 4, 2, 4))
+plot.new()
+plot.window(range(x), c(0, 6))
+lines(x, y1)
+lines(x, y2)
+points(x, y1, pch=16, cex=2)
+points(x, y2, pch=21, bg="white", cex=2)
+par(col="grey50", fg="grey50", col.axis="grey50")
+axis(1, at=seq(0, 16, 4))
+axis(2, at=seq(0, 6, 2))
+axis(4, at=seq(0, 6, 2))
+box(bty="u")
+mtext("Travel Time (s)", side=1, line=2, cex=0.8)
+mtext("Responses per Travel", side=2, line=2, las=0, cex=0.8)
+mtext("Responses per Second", side=4, line=2, las=0, cex=0.8)
+text(4, 5, "Bird 131")
+par(mar=c(5.1, 4.1, 4.1, 2.1), col="black", fg="black", col.axis="black")
+
+
+# Histogram
+# Random data
+Y <- rnorm(50)
+# Make sure no Y exceed [-3.5, 3.5]
+Y[Y < -3.5 | Y > 3.5] <- NA
+x <- seq(-3.5, 3.5, .1)
+dn <- dnorm(x)
+par(mar=c(4.5, 4.1, 3.1, 0))
+hist(Y, breaks=seq(-3.5, 3.5), ylim=c(0, 0.5), 
+     col="grey80", freq=FALSE)
+lines(x, dnorm(x), lwd=2)
+par(mar=c(5.1, 4.1, 4.1, 2.1))
+
+# Barplot
+# Modified from example(barplot)
+par(mar=c(2, 3.1, 2, 2.1))
+midpts <- barplot(VADeaths, col=grey(0.5 + 1:5/12), 
+                  names=rep("", 4))
+mtext(sub(" ", "\n", colnames(VADeaths)),
+      at=midpts, side=1, line=0.5, cex=0.5)
+text(rep(midpts, each=5), apply(VADeaths, 2, cumsum) - VADeaths/2,
+     VADeaths, col=rep(c("white", "black"), times=2:3, cex=0.8))
+par(mar=c(5.1, 4.1, 4.1, 2.1))
+
+# Boxplot
+# Modified example(boxplot) - itself from suggestion by Roger Bivand
+par(mar=c(3, 4.1, 2, 0))
+boxplot(len ~ dose, data = ToothGrowth,
+        boxwex = 0.25, at = 1:3 - 0.2,
+        subset= supp == "VC", col="grey90",
+        xlab="",
+        ylab="tooth length", ylim=c(0,35))
+mtext("Vitamin C dose (mg)", side=1, line=2.5, cex=0.8)
+boxplot(len ~ dose, data = ToothGrowth, add = TRUE,
+        boxwex = 0.25, at = 1:3 + 0.2,
+        subset= supp == "OJ", col="grey70")
+legend(1.5, 9, c("Ascorbic acid", "Orange juice"), bty="n",
+       fill = c("grey90", "grey70"))
+par(mar=c(5.1, 4.1, 4.1, 2.1))
+
+# Persp
+# Almost exactly example(persp)
+x <- seq(-10, 10, length= 30)
+y <- x
+f <- function(x,y) { r <- sqrt(x^2+y^2); 10 * sin(r)/r }
+z <- outer(x, y, f)
+z[is.na(z)] <- 1
+# 0.5 to include z axis label
+par(mar=c(0, 0.5, 0, 0), lwd=0.1)
+persp(x, y, z, theta = 30, phi = 30, expand = 0.5, col = "grey80")
+par(mar=c(5.1, 4.1, 4.1, 2.1), lwd=1)
+
+# Piechart
+# Example 4 from help(pie)
+par(mar=c(0, 2, 1, 2), xpd=FALSE, cex=0.5)
+pie.sales <- c(0.12, 0.3, 0.26, 0.16, 0.04, 0.12)
+names(pie.sales) <- c("Blueberry", "Cherry",
+                      "Apple", "Boston Cream", "Other", "Vanilla")
+pie(pie.sales, col = gray(seq(0.4,1.0,length=6)))
+
+
