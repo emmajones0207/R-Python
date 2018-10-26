@@ -1,0 +1,328 @@
+---
+title: "Malaria Project: Analyzing Malaria Under 5 Cases Per Thousand Against Lagged Weather Data"
+author: "Emma Jones"
+date: "October 22, 2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(dplyr)
+knitr::opts_chunk$set(echo = TRUE)
+
+mal <- read.csv("./MozSyntheticMalaria.csv")
+mal <- mal[,c(1:4, 12:26)]
+
+# creating cases per thousand variable
+mal$denom <- mal$Population_UN*mal$u5weight
+mal$cpt <- (mal$malaria/mal$denom)*1000
+
+head(mal)
+
+```
+
+
+```{r lag}
+# creating a lagged rain total variable k number of weeks behind the rest of the data
+mal$lag2rainT <- lag(mal$rainTot, 2)
+
+mal$lag4rainT <- lag(mal$rainTot, 4)
+
+mal$lag8rainT <- lag(mal$rainTot, 8)
+
+mal$lag16rainT <- lag(mal$rainTot, 16)
+
+# creating a lagged temp avg variable
+mal$lag2tavg <- lag(mal$tavg, 2)
+
+mal$lag4tavg <- lag(mal$tavg, 4)
+
+mal$lag8tavg <- lag(mal$tavg, 8)
+
+mal$lag16tavg <- lag(mal$tavg, 16)
+```
+
+#Questions of Interest
+##1. Which lags are most associated with malaria incidence for temperature and total rain-fall?
+
+```{r rainTcpt}
+library(colorspace)
+library(ggplot2)
+
+# The palette with black:
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+cptRain <- ggplot(data=mal) + geom_smooth(mapping = aes(x = Epiweek, y= cpt), color = "#660066") +
+  geom_smooth(mapping = aes(x = Epiweek, y = rainTot), color="#660066") +
+  geom_smooth(mapping = aes(x = Epiweek, y=lag2rainT), color="#CC0000") + 
+  geom_smooth(mapping = aes(x = Epiweek, y=lag4rainT), color="#FF6600") +
+  geom_smooth(mapping = aes(x = Epiweek, y=lag8rainT), color="#FF9933") 
+cptRain
+
+# use function ccf in stats package
+
+rain.ccf <- ccf(mal$rainTot, mal$cpt)
+rain.ccf
+
+rain.temp.ccf <- ccf(mal$rainTot, mal$tavg)
+rain.temp.ccf
+
+
+```
+
+```{r tavgCpt}
+
+cptTavg <- ggplot(data=mal) + geom_smooth(mapping = aes(x = Epiweek, y= cpt), color = "#660066") +
+  geom_smooth(mapping = aes(x = Epiweek, y = tavg), color="#660066") +
+  geom_smooth(mapping = aes(x = Epiweek, y=lag2tavg), color="#CC0000") + 
+  geom_smooth(mapping = aes(x = Epiweek, y=lag4tavg), color="#FF6600") +
+  geom_smooth(mapping = aes(x = Epiweek, y=lag8tavg), color="#FF9933") 
+cptTavg
+
+temp.ccf <- ccf(mal$tavg, mal$cpt)
+temp.ccf
+
+
+```
+It appears that Total Rain lagged by 4 weeks is most correlated with CPT, while Average Temperature lagged by 16 weeks is most correlated with CPT.
+
+```{r overTime}
+library(dplyr)
+mal <- mutate(mal, hyp.date = as.Date(paste(mal$Epiyear, mal$Epiweek, "1", sep="-"), format="%Y-%U-%u"))
+
+#malLongi <- ggplot(data = mal, aes(x=hyp.date, y=cpt, color=Region)) +  geom_point(alpha=0.05) + geom_smooth(color="black")
+#malLongi + facet_wrap(vars(mal$Region))
+
+#rainTLongi <- ggplot(data = mal, aes(x=hyp.date, y=lag4rainT, color=Region)) + geom_point(alpha=0.05) + 
+#  geom_smooth(color="black")
+#rainTLongi + facet_wrap(vars(mal$Region))
+
+rainCPT <- ggplot(data = mal, aes(x=hyp.date, y=sqrt(lag4rainT), color=Region))  + 
+  geom_point(aes(x=hyp.date, y=cpt, color=Region), alpha=0.05) + 
+  geom_line(color="black", alpha=0.5) + 
+  scale_y_continuous(sec.axis = sec_axis(~.*1, name="Cases Per Thousand Under 5 y.o."))+
+  xlab("") +
+  ylab("4 wk Lag in Square Root of Total Rainfall") +
+  guides(color = guide_legend(override.aes = list(alpha=1))) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+rainCPT + facet_wrap(vars(mal$Region))
+
+tempCPT <- ggplot(data = mal, aes(x=hyp.date, y=lag16tavg, color=Region))  + 
+  geom_point(aes(x=hyp.date, y=cpt, color=Region), alpha=0.1) + geom_line(color="black", alpha=0.5) + 
+  scale_y_continuous(sec.axis = sec_axis(~.*1, name="Cases Per Thousand Under 5 y.o.")) + xlab("") +
+  ylab("16 wk Lag in Avg. Temp") +
+  guides(color = guide_legend(override.aes = list(alpha=1)))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+tempCPT + facet_wrap(vars(mal$Region))
+
+```
+
+```{r correlation}
+# calculating correlation between lag variables and CPT
+
+malShort <- mal[-c(1:16),]
+
+rainCorr <- c(cor(malShort$cpt, malShort$lag2rainT), cor(malShort$cpt, malShort$lag4rainT), cor(malShort$cpt, malShort$lag8rainT), cor(malShort$cpt, malShort$lag16rainT))
+
+tempCorr <- c(cor(malShort$cpt, malShort$lag2tavg), cor(malShort$cpt, malShort$lag4tavg), cor(malShort$cpt, malShort$lag8tavg), cor(malShort$cpt, malShort$lag16tavg))
+
+correlation <- rbind(rainCorr, tempCorr)
+colnames(correlation) <- c("2 wk Lag", "4 wk Lag", "8 wk Lag", "16 wk Lag")
+rownames(correlation) <- c("RainTot:CPT Corr", "AvgTemp:CPT Corr")
+kable(correlation)
+
+```
+
+## 2. Which region has the most malaria?
+
+```{r histograms}
+
+mal$Region2 <- factor(mal$Region, levels = c("Center", "Coastal", "Northern", "Southern"))
+mal$Epiyear2
+
+histCPT <- ggplot(data=mal, aes(x=Region, y=cpt, fill=Region)) + geom_bar(stat='identity')
+
+
+histCPT + facet_wrap(vars(mal$Epiyear), nrow=2) + ylab("Cases per Thousand (Under 5 y.o.)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + labs(fill="Year")
+
+
+histCPT2 <- ggplot(data=mal, aes(x=Epiyear, y=cpt, fill=as.factor(Epiyear))) + geom_bar(stat='identity')
+histCPT2 + facet_wrap(vars(mal$Region), nrow = 2) + labs(fill="Year")
+
+``` 
+
+
+## 3.In which regions is rainfall high? Temperature? How much do these variables vary across the country? 
+```{r}
+histRain <- ggplot(data=mal, aes(x=Region, y=rainTot, fill=Region)) + geom_bar(stat='identity')+ 
+  ylab("Total Rainfall Across Region") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+histRain + facet_wrap(vars(mal$Epiyear), nrow=2) + 
+  scale_x_discrete(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017))
+
+histRain2 <- ggplot(data=mal, aes(x=Epiyear, y=rainTot, fill=as.factor(Epiyear))) + geom_bar(stat='identity')+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ylab("Total Rainfall Across Region") + 
+  scale_x_discrete(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017)) +
+  labs(fill="Year")
+histRain2 + facet_wrap(vars(mal$Region), nrow = 2)
+
+
+
+
+```
+
+```{r}
+histTemp <- ggplot(data=mal, aes(x=Region, y=tavg, fill=Region)) + geom_boxplot()
+histTemp + facet_wrap(vars(mal$Epiyear), nrow=2) + ylab("Average Temperature (C) Across Region") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+histTemp2 <- ggplot(data=mal, aes(x=Epiyear, y=tavg, fill=as.factor(Epiyear))) + geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ylab("Average Temperature (C) Across Region") 
+histTemp2 + facet_wrap(vars(mal$Region), nrow = 2)
+```
+
+## Are cases clustered in a particular area of Mozambique? How does this overlap with rainfall and temperature? (think about maps here)
+
+```{r}
+# getting cases per thousand over whole districts
+
+malaria <- as.data.frame(tapply(mal$malaria, list(mal$DISTCODE, mal$Epiyear), sum))
+colnames(malaria) <- c("mal10", "mal11", "mal12", "mal13", "mal14", "mal15", "mal16")
+
+denom <- as.data.frame(tapply(mal$denom, list(mal$DISTCODE, mal$Epiyear), sum))
+colnames(denom) <- c("denom10", "denom11", "denom12", "denom13", "denom14", "denom15", "denom16")
+
+malDenom <-as.data.frame(cbind(malaria, denom))
+
+cptDist <- malaria/denom*1000
+
+```
+
+
+```{r maps}
+library(RColorBrewer)
+library(sp)
+library(maptools) 
+library(lattice)
+library(latticeExtra) # For layer()
+library(rgdal)
+library(tmap)
+#install.packages("tmaptools")
+library(tmaptools)
+
+poly1 <- readShapePoly('Moz_admin2.shp', IDvar="DISTCODE")
+plot(poly1)
+all2 <- subset(mal, Epiyear < 2017)
+
+
+rainTot <- as.data.frame(tapply(all2$rainTot, list(all2$DISTCODE, all2$Epiyear), sum))
+colnames(rainTot) <- c("rain10", "rain11", "rain12", "rain13", "rain14", "rain15", "rain16")
+tavg <- as.data.frame(tapply(all2$tavg, list(all2$DISTCODE, all2$Epiyear), mean))
+colnames(tavg) <- c("t10", "t11", "t12", "t13", "t14", "t15", "t16")
+  
+allStats <- as.data.frame(cbind(cptDist, rainTot, tavg))
+
+polydat <- SpatialPolygonsDataFrame(poly1, allStats)
+
+moz10 <- tm_shape(polydat) + 
+  tm_polygons(col = "rain10" , palette="Blues", title="Total Rainfall") +
+  tm_bubbles(size = "mal10", col = "t10", title.size = "Malaria Cases per Thousand", title.col = "Avg. Temp.") +
+  tm_legend(outside = TRUE)
+
+moz10
+
+moz11 <- tm_shape(polydat) + 
+  tm_polygons(col = "rain11" , palette="Blues", title="Total Rainfall") +
+  tm_bubbles(size = "mal11", col = "t11", title.size = "Malaria Cases per Thousand", title.col = "Avg. Temp.") +
+  tm_legend(outside = TRUE)
+
+moz11
+
+moz12 <- tm_shape(polydat) + 
+  tm_polygons(col = "rain12" , palette="Blues", title="Total Rainfall") +
+  tm_bubbles(size = "mal12", col = "t12", title.size = "Malaria Cases per Thousand", title.col = "Avg. Temp.") +
+  tm_legend(outside = TRUE)
+moz12
+
+moz13 <- tm_shape(polydat) + 
+  tm_polygons(col = "rain13" , palette="Blues", title="Total Rainfall") +
+  tm_bubbles(size = "mal13", col = "t13", title.size = "Malaria Cases per Thousand", title.col = "Avg. Temp.") +
+  tm_legend(outside = TRUE)
+moz13
+
+moz14 <- tm_shape(polydat) + 
+  tm_polygons(col = "rain14" , palette="Blues", title="Total Rainfall") +
+  tm_bubbles(size = "mal14", col = "t14", title.size = "Malaria Cases per Thousand", title.col = "Avg. Temp.") +
+  tm_legend(outside = TRUE)
+moz14
+
+moz15 <- tm_shape(polydat) + 
+  tm_polygons(col = "rain15" , palette="Blues", title="Total Rainfall") +
+  tm_bubbles(size = "mal15", col = "t15", title.size = "Malaria Cases per Thousand", title.col = "Avg. Temp.") +
+  tm_legend(outside = TRUE)
+moz15
+
+moz16 <- tm_shape(polydat) + 
+  tm_polygons(col = "rain16" , palette="Blues", title="Total Rainfall") +
+  tm_bubbles(size = "mal16", col = "t16", title.size = "Malaria Cases per Thousand", title.col = "Avg. Temp.") +
+  tm_legend(outside = TRUE)
+moz16
+
+
+```
+
+```{r cptDif}
+poly2 <- readShapePoly('mozambique_admin1.shp', IDvar="NAME1")
+
+mal2 <- subset(mal, mal$Province !="MAPUTO CIDADE")
+# setting up data for region-based dataframe and map
+#Create a new variable that is cases of malaria per thousand people #
+mal2$cases <- (mal2$malaria / (mal2$Population_UN*mal2$u5weight)
+)*1000
+
+totCases <- as.data.frame(tapply(mal2$malaria, list(mal2$Province, mal2$Epiyear), sum))
+
+colnames(totCases) <- c("cpt10", "cpt11", "cpt12", "cpt13", "cpt14", "cpt15", "cpt16")
+
+rainTot <- as.data.frame(tapply(mal2$rainTot, list(mal2$Province, mal2$Epiyear), sum))
+colnames(rainTot) <- c("rain10", "rain11", "rain12", "rain13", "rain14", "rain15", "rain16")
+#tavg <- as.data.frame(tapply(mozData.2$tavg, list(mozData.2$Province, mozData.2$Epiyear), mean))
+#colnames(tavg) <- c("t10", "t11", "t12", "t13", "t14", "t15", "t16")
+  
+allStats2 <- as.data.frame(cbind(totCases, rainTot))
+
+
+#removing Maputo Cidade row from allStats
+allStats2 <- allStats2[-6,]
+
+# need to rename allStats.2 row names to match shape file
+row.names(allStats2) <- c("Cabo Delgado", "Gaza", "Inhambane", "Manica", "Maputo", "Nampula", "Nassa", "Sofala", "Tete", "Zambezia")
+
+polydat2 <- SpatialPolygonsDataFrame(poly2, allStats2)
+
+
+allStats$cptDiff <- allStats$cpt16-allStats$cpt10 # difference in cases
+
+allStats$cptDistDiff <- allStats$mal16-allStats$mal10 # difference in cpt
+
+polydat <- SpatialPolygonsDataFrame(poly1, allStats)
+
+# creating color palette of reds, greens, yellows, so that green is for negative (good) values,
+# and red is for positive (bad) values
+colors <- c("#1A9641", "#A6D96A", "#FFFFBF", "#FDAE61", "#D7191C")
+
+
+cptDifMap <- tm_shape(polydat) +
+  tm_polygons(col = "cptDistDiff", palette = colors, breaks = c(-Inf, 0, 5, 10, 15, 20, Inf), 
+              midpoint=NA, title = "Change in Malaria Cases per Thousand: 2010-2016", border.col = "gray50", border.alpha = .5) + 
+  tm_shape(polydat2) + tm_borders(lwd = 1, col = "black", alpha = .5) +
+  tm_legend(outside = TRUE) 
+cptDifMap
+
+
+
+```
+
